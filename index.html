@@ -256,12 +256,12 @@
         import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
         
         const firebaseConfig = {
-            apiKey: "YOUR API KEY",
-            authDomain: "YOUR AUTH DOMAIN",
-            databaseURL: "YOUR DATABASE URL",
-            projectId: "YOUR PROJECT ID",
-            messagingSenderId: "YOUR MESSAGING ID",
-            appId: "YOUR APPLICATION ID"
+            apiKey: "AIzaSyB5o0EsQLD-5ypccH-p2XJEhlDjSd0EJw4",
+            authDomain: "webselling.firebaseapp.com",
+            databaseURL: "https://webselling-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "webselling",
+            messagingSenderId: "774237486040",
+            appId: "1:774237486040:web:2f0d1f47df313b1e1c50ad"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -272,7 +272,7 @@
         window.isAdmin = false;
         window.coursesData = {};
         window.cart = JSON.parse(localStorage.getItem('javagoat_cart')) || {};
-        const ADMIN_EMAIL = 'admin@javagoat.com';
+        const ADMIN_EMAIL = 'admin@blazeshort.com';
 
         async function compressImage(file) {
             return new Promise((resolve) => {
@@ -481,7 +481,7 @@
 
             // Generate Dynamic QR Code embedding specified JSON data
             const qrData = {
-                email: "khanshahidkhanshahid96@gmail.com",
+                email: "realmenargog@gmail.com",
                 name: "java goat",
                 amount: total,
                 txn_name: "Course Purchase - JavaGoat"
