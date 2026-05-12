@@ -250,6 +250,217 @@
         <a onclick="logout()" class="nav-item auth-show"><i class="fa-solid fa-power-off"></i> Logout</a>
     </nav>
 
+    <!-- Firebase Compat Libraries (Safe for all environments, no CORS blocking) -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-database-compat.js"></script>
+
+    <script>
+        // ================= GLOBAL VARIABLES =================
+        window.currentUser = 'loading';
+        window.isAdmin = false;
+        window.coursesData = {};
+        window.transactionsData = {};
+        const ADMIN_EMAIL = 'admin@blaze.com';
+
+        // Safe JSON parsing for local storage
+        try {
+            window.cart = JSON.parse(localStorage.getItem('blazecodehub_cart')) || {};
+        } catch(e) {
+            window.cart = {};
+        }
+
+        // ================= GLOBAL UI FUNCTIONS (Buttons) =================
+        function showFlash(message, type = 'success') {
+            const flash = document.getElementById('flash-message');
+            flash.innerHTML = `<i class='fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-triangle-exclamation'}'></        .admin-table-img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
+
+        .flash-message { background: #10B981; color: white; padding: 12px 20px; border-radius: var(--radius-md); margin: 20px 0; font-weight: 600; font-size: 14px; display: none; }
+        .flash-message.error { background: #EF4444; }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .auth-show { display: none; }
+        .admin-show { display: none; }
+        .guest-show { display: inline-block; }
+
+        @media (min-width: 768px) {
+            body { padding-bottom: 30px; }
+            .mobile-nav { display: none; }
+            .desktop-nav { display: flex; gap: 25px; list-style: none; align-items: center; }
+            .desktop-nav a { color: var(--text-dark); text-decoration: none; font-weight: 600; font-size: 15px; cursor: pointer;}
+            .hero { padding: 60px; margin: 40px 0; border-radius: var(--radius-xl); }
+            .hero h2 { font-size: 42px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 24px; }
+            .card-img { height: 160px; }
+            .card-body { padding: 20px; }
+            .card-title { font-size: 18px; }
+            .card-desc { display: block; font-size: 13px; color: var(--text-light); margin-bottom: 15px; }
+            .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a onclick="navigate('home')" class="site-title"><i class="fa-solid fa-code"></i> BlazeCodeHub</a>
+            <ul class="desktop-nav">
+                <li><a onclick="navigate('home')">Home</a></li>
+                <li><a onclick="navigate('cart')">Cart (<span id="d-cart">0</span>)</a></li>
+                <li class="auth-show" id="desktop-user-display" style="background:#F3F4F6; padding:6px 12px; border-radius:20px; font-size:13px; font-weight:700; color:var(--text-dark);"></li>
+                <li class="auth-show"><a onclick="navigate('library')" style="color:var(--primary); font-weight:800;">My Library</a></li>
+                <li class="admin-show"><a onclick="navigate('admin')" style="color:var(--secondary);">Admin</a></li>
+                <li class="auth-show"><a onclick="logout()" class="btn-glass" style="color:var(--text-light); border-color:var(--border-color);">Logout</a></li>
+                <li class="guest-show"><a onclick="navigate('login')" class="btn-glass" style="background:var(--primary); color:white; border:none;">Login</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="flash-message" class="flash-message"></div>
+
+        <!-- ================= VIEW: HOME ================= -->
+        <div id="view-home" class="view-section active">
+            <div class="hero">
+                <h2>Master Code.<br>Unleash Your Potential.</h2>
+                <p>Download exclusive PDF guides. No fluff, just pure programming power.</p>
+                <a onclick="document.getElementById('browse').scrollIntoView()" class="btn-glass">Browse Library</a>
+            </div>
+            <h3 class="section-title" id="browse">Featured Guides</h3>
+            <div id="courses-container"></div>
+        </div>
+
+        <!-- ================= VIEW: CART ================= -->
+        <div id="view-cart" class="view-section">
+            <h3 class="section-title">Your Cart</h3>
+            <div class="box" id="cart-container"></div>
+        </div>
+
+        <!-- ================= VIEW: PAYMENT ================= -->
+        <div id="view-payment" class="view-section">
+            <h3 class="section-title">Checkout</h3>
+            <div class="admin-grid">
+                <div class="box" style="text-align:center;">
+                    <h4>Pay with BlazeCodeHub Wallet</h4>
+                    <p style="font-size:12px; color:var(--text-light); margin:5px 0 15px;">Scan this dynamic QR code using your BlazeCodeHub Points Wallet to auto-fill the payment details.</p>
+                    <img id="payment-qr" src="https://placehold.co/200x200?text=Loading+QR" style="width:200px; height:200px; border-radius:12px; margin:5px 0; object-fit:cover;">
+                    <div style="font-size:24px; font-weight:800; color:var(--primary); margin-top:10px;"><span id="payment-total">0</span> Pts</div>
+                </div>
+                <div class="box">
+                    <form id="payment-form">
+                        <h4>Verify Payment</h4>
+                        <p style="font-size:13px; color:var(--text-light); margin-bottom:15px;">After sending points via BlazeCodeHub Wallet, enter your transaction reference number below.</p>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" id="payer_email" class="form-control" readonly style="background:#eee;">
+                        </div>
+                        <div class="form-group"><label>Txn Ref No. (From Receipt)</label><input type="text" id="transaction_id" class="form-control" required></div>
+                        <button type="submit" class="btn-main">Submit Verification</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW: LIBRARY ================= -->
+        <div id="view-library" class="view-section">
+            <div class="hero" style="background:var(--secondary); padding:20px; margin-top:10px;">
+                <h2 style="font-size:24px; margin:0;"><i class="fa-solid fa-book-open"></i> My Library</h2>
+                <p id="mobile-user-display" style="margin:5px 0 0; font-size:14px; opacity:0.9; font-weight:600;"></p>
+            </div>
+            <div id="library-container"></div>
+        </div>
+
+        <!-- ================= VIEW: ADMIN ================= -->
+        <div id="view-admin" class="view-section">
+            <div class="hero" style="padding:20px; background:var(--text-dark); margin-top:10px; margin-bottom:15px;">
+                <h2 style="font-size:24px; margin:0;"><i class="fa-solid fa-shield-halved"></i> Admin Console</h2>
+            </div>
+            <div class="admin-tabs">
+                <a onclick="showAdminTab('dashboard')" id="tab-dashboard" class="active"><i class="fa-solid fa-plus"></i> Dashboard</a>
+                <a onclick="showAdminTab('courses')" id="tab-courses"><i class="fa-solid fa-book"></i> Manage Courses</a>
+                <a onclick="showAdminTab('orders')" id="tab-orders"><i class="fa-solid fa-receipt"></i> Orders</a>
+            </div>
+
+            <!-- Dashboard Sub-tab -->
+            <div id="admin-dashboard" class="admin-subview">
+                <div class="box">
+                    <h3><i class="fa-solid fa-upload"></i> Add Course</h3>
+                    <form id="add-course-form">
+                        <div class="form-group"><label>Course Title</label><input type="text" id="course_name" class="form-control" required></div>
+                        <div class="form-group"><label>Price (Pts)</label><input type="number" id="course_price" class="form-control" required></div>
+                        <div class="form-group"><label>Short Description</label><textarea id="course_desc" class="form-control" required rows="2"></textarea></div>
+                        <div style="background:#F9FAFB; padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid #E5E7EB;">
+                            <div class="form-group">
+                                <label style="color:var(--primary);"><i class="fa-solid fa-image"></i> Upload Course Cover Image</label>
+                                <input type="file" id="course_image_file" class="form-control" accept="image/*" required>
+                            </div>
+                            <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="color:var(--secondary);"><i class="fa-solid fa-file-pdf"></i> Downloadable File Path</label>
+                                <input type="text" id="course_file_url" class="form-control" placeholder="e.g., ./files/course.pdf or https://..." required>
+                            </div>
+                        </div>
+                        <button type="submit" id="btn-add-course" class="btn-main">Publish Course</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Manage Courses Sub-tab -->
+            <div id="admin-courses" class="admin-subview" style="display:none;">
+                <div class="box" style="overflow-x:auto;">
+                    <table id="admin-courses-table"></table>
+                </div>
+            </div>
+
+            <!-- Orders Sub-tab -->
+            <div id="admin-orders" class="admin-subview" style="display:none;">
+                <div class="box" style="overflow-x:auto;">
+                    <table id="admin-orders-table"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW: LOGIN ================= -->
+        <div id="view-login" class="view-section">
+            <div class="box" style="max-width:400px; margin:40px auto;">
+                <h2 style="text-align:center; margin-bottom:20px;">Login</h2>
+                <form id="login-form">
+                    <div class="form-group"><label>Email Address</label><input type="email" id="login_email" class="form-control" required></div>
+                    <div class="form-group"><label>Password</label><input type="password" id="login_password" class="form-control" required></div>
+                    <button type="submit" class="btn-main">Login</button>
+                    <div style="text-align:center; margin-top:15px; font-size:13px;">
+                        Don't have an account? <a onclick="navigate('register')" style="color:var(--primary); cursor:pointer;">Register</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= VIEW: REGISTER ================= -->
+        <div id="view-register" class="view-section">
+            <div class="box" style="max-width:400px; margin:40px auto;">
+                <h2 style="text-align:center; margin-bottom:20px;">Register</h2>
+                <form id="register-form">
+                    <div class="form-group"><label>Email</label><input type="email" id="reg_email" class="form-control" required></div>
+                    <div class="form-group"><label>Password</label><input type="password" id="reg_password" class="form-control" required></div>
+                    <div class="form-group"><label>Confirm Password</label><input type="password" id="reg_confirm" class="form-control" required></div>
+                    <button type="submit" class="btn-main">Register</button>
+                    <div style="text-align:center; margin-top:15px; font-size:13px;">
+                        Already have an account? <a onclick="navigate('login')" style="color:var(--primary); cursor:pointer;">Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <nav class="mobile-nav">
+        <a onclick="navigate('home')" id="m-nav-home" class="nav-item active"><i class="fa-solid fa-house"></i> Home</a>
+        <a onclick="navigate('cart')" id="m-nav-cart" class="nav-item guest-show" style="display:flex;"><i class="fa-solid fa-bag-shopping"></i><div class="cart-badge" id="m-cart">0</div> Cart</a>
+        <a onclick="navigate('login')" id="m-nav-login" class="nav-item guest-show" style="display:flex;"><i class="fa-solid fa-user"></i> Login</a>
+        <a onclick="navigate('library')" id="m-nav-library" class="nav-item auth-show"><i class="fa-solid fa-book-open"></i> Library</a>
+        <a onclick="navigate('admin')" id="m-nav-admin" class="nav-item admin-show"><i class="fa-solid fa-shield-halved"></i> Admin</a>
+        <a onclick="logout()" class="nav-item auth-show"><i class="fa-solid fa-power-off"></i> Logout</a>
+    </nav>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
